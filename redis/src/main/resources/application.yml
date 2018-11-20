@@ -1,0 +1,5 @@
+spring:
+  redis:
+    host: 39.107.90.7
+    port: 6379
+    password: yinhai
