@@ -314,4 +314,16 @@ public class JedisClientSingle implements  JedisClient {
         }
         return resultList;
     }
+
+    @Override
+    public void zadd(String key,Integer timeout,String value){
+        try {
+            jedis.zadd(protostuffSerializer.serialize(key),timeout,protostuffSerializer.serialize(value));
+        }catch (Exception e){
+            logger.info(e.toString());
+        }
+    }
+
+
+
 }

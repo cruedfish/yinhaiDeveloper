@@ -25,6 +25,9 @@ public class asynchronousQueue {
         result.add(result1);
         result.add(result2);
         result.stream().forEach(a->System.out.println(a));
+        jedisClient.lpush("testqueue","123");
+        jedisClient.lpush("testqueue","456");
+        jedisClient.lpush("testqueue","123");
         result = jedisClient.rbpop("testqueue");
         int n =1;
         result.stream().forEach(a->System.out.println(a));

@@ -129,4 +129,8 @@ public interface JedisClient {
     String rpop(String key);
 
     public List<String> rbpop(String key);
+
+    public void zadd(String key,Integer timeout,String value);
+
+
 }
