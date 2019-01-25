@@ -10,6 +10,9 @@ import javax.xml.ws.RequestWrapper;
 public class SendController {
     @Autowired
     RabbitProducer rabbitProducer;
+
+    @Autowired
+    KafkaProducer kafkaProducer;
     @RequestMapping(value = "/test/send")
     public void testSend(){
         rabbitProducer.send();
@@ -17,5 +20,10 @@ public class SendController {
     @RequestMapping(value = "/test/send2")
     public void testSend2(){
         rabbitProducer.sendFanout();
+    }
+
+    @RequestMapping(value = "/test/send3")
+    public void testSend3(){
+        kafkaProducer.send();
     }
 }
