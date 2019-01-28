@@ -26,9 +26,9 @@ public class KafkaProducer {
     public  KafkaTemplate<String,String> kafkaTemplate;
 
     public  void send(){
-        ProducerRecord<String,String> producerRecord = new ProducerRecord("kafkaTopic1",0,"test1","value1",null);
-        ProducerRecord<String,String> producerRecord2 = new ProducerRecord("kafkaTopic2",0,"test1","value1",null);
-        ProducerRecord<String,String> producerRecord3 = new ProducerRecord("kafkaTopic3",0,"test3","value3",null);
+        ProducerRecord<String,String> producerRecord = new ProducerRecord("foo",0,"test1","test1",null);
+        ProducerRecord<String,String> producerRecord2 = new ProducerRecord("foo",0,"test2","test2",null);
+        ProducerRecord<String,String> producerRecord3 = new ProducerRecord("foo",0,"test3","test3",null);
         kafkaTemplate.send(producerRecord).addCallback(new ListenableFutureCallback() {
             @Override
             public void onFailure(Throwable ex) {

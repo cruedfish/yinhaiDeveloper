@@ -1,23 +1,32 @@
 package com.rabbitmq.queuedevploper;
 
+import org.apache.kafka.clients.admin.AdminClient;
 import org.apache.kafka.clients.admin.AdminClientConfig;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.IntegerDeserializer;
 import org.apache.kafka.common.serialization.IntegerSerializer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
+import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ContainerProperties;
 import org.springframework.kafka.listener.KafkaMessageListenerContainer;
 import org.springframework.kafka.listener.MessageListener;
+import org.springframework.kafka.requestreply.ReplyingKafkaTemplate;
+import org.springframework.kafka.requestreply.RequestReplyFuture;
+import org.springframework.kafka.support.SendResult;
+import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
@@ -35,7 +44,7 @@ public class KafkaConfig {
     private static final Logger logger = LoggerFactory.getLogger(KafkaConfig.class);
     @Bean(name = "KafkaContainer")
     public KafkaMessageListenerContainer  getKafkaMessagerListener(){
-        ContainerProperties containerProperties = new ContainerProperties("kafkaTopic1","kafkaTopic2");
+        ContainerProperties containerProperties = new ContainerProperties("foo","kafkaTopic2");
         containerProperties.setMessageListener(new MessageListener<String,String>() {
             @Override
             public void onMessage(ConsumerRecord<String, String> data) {
@@ -77,13 +86,17 @@ public class KafkaConfig {
         props.put(ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, StringDeserializer.class);
         return props;
     }
-
+//创建主题用
     @Bean
     public KafkaAdmin admin() {
         Map<String, Object> configs = new HashMap<>();
         configs.put(AdminClientConfig.BOOTSTRAP_SERVERS_CONFIG,
                 StringUtils.arrayToCommaDelimitedString(new String[]{"39.107.90.7:9092","39.107.90.7:9093"}));
         return new KafkaAdmin(configs);
+    }
+    @Bean
+    public AdminClient adminClient() {
+        return AdminClient.create(admin().getConfig());
     }
     @Bean
     public NewTopic topic1() {
@@ -93,5 +106,47 @@ public class KafkaConfig {
     @Bean
     public NewTopic topic2() {
         return new NewTopic("bar", 2, (short) 2);
+    }
+
+    @Bean
+    public ApplicationRunner runner(ReplyingKafkaTemplate<String, String, String> template) {
+        return args -> {
+            ProducerRecord<String, String> record = new ProducerRecord<>("kRequests", "foo");
+            RequestReplyFuture<String, String, String> replyFuture = template.sendAndReceive(record);
+            SendResult<String, String> sendResult = replyFuture.getSendFuture().get();
+            System.out.println("Sent ok: " + sendResult.getRecordMetadata());
+            ConsumerRecord<String, String> consumerRecord = replyFuture.get();
+            System.out.println("Return value: " + consumerRecord.value());
+        };
+    }
+
+    @Bean
+    public ReplyingKafkaTemplate<String, String, String> replyingTemplate(
+            ProducerFactory<String, String> pf, ConcurrentMessageListenerContainer<String, String> repliesContainer) {
+        return new ReplyingKafkaTemplate<String,String,String>(pf, repliesContainer);
+    }
+    @Bean
+    public ConcurrentMessageListenerContainer<String, String> repliesContainer(
+            ConcurrentKafkaListenerContainerFactory<String, String> containerFactory) {
+
+        ConcurrentMessageListenerContainer<String, String> repliesContainer =
+                containerFactory.createContainer("replies");
+        repliesContainer.getContainerProperties().setGroupId("repliesGroup");
+        repliesContainer.setAutoStartup(false);
+        return repliesContainer;
+    }
+    //配置事务用
+    @Bean
+    public ProducerFactory<Integer, String> producerFactory() {
+        DefaultKafkaProducerFactory factory = new DefaultKafkaProducerFactory<>(senderProps());
+        factory.transactionCapable();
+        factory.setTransactionIdPrefix("tran-");
+        return factory;
+    }
+
+    @Bean
+    public KafkaTransactionManager transactionManager(ProducerFactory producerFactory) {
+        KafkaTransactionManager manager = new KafkaTransactionManager(producerFactory);
+        return manager;
     }
 }
