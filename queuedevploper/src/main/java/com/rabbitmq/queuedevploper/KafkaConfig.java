@@ -42,25 +42,23 @@ import java.util.Map;
 @Configuration
 public class KafkaConfig {
     private static final Logger logger = LoggerFactory.getLogger(KafkaConfig.class);
-    @Bean(name = "KafkaContainer")
-    public KafkaMessageListenerContainer  getKafkaMessagerListener(){
-        ContainerProperties containerProperties = new ContainerProperties("foo","kafkaTopic2");
-        containerProperties.setMessageListener(new MessageListener<String,String>() {
-            @Override
-            public void onMessage(ConsumerRecord<String, String> data) {
-                logger.info("收到的主题名"+data.topic()+"偏移量为"+data.offset()+"分区为"+data.partition()+"收到的数据为:"+data.value());
-            }
-        });
-        ConsumerFactory<String,String> consumerFactory = new DefaultKafkaConsumerFactory<String, String>(consumerProps());
-        KafkaMessageListenerContainer<String,String> kafkaMessageListenerContainer = new KafkaMessageListenerContainer<String, String>(consumerFactory,containerProperties);
-        return kafkaMessageListenerContainer;
-    }
+//    @Bean(name = "KafkaContainer")
+//    public KafkaMessageListenerContainer  getKafkaMessagerListener(){
+//        ContainerProperties containerProperties = new ContainerProperties("foo","kafkaTopic2");
+//        containerProperties.setMessageListener(new MessageListener<String,String>() {
+//            @Override
+//            public void onMessage(ConsumerRecord<String, String> data) {
+//                logger.info("收到的主题名"+data.topic()+"偏移量为"+data.offset()+"分区为"+data.partition()+"收到的数据为:"+data.value());
+//            }
+//        });
+//        ConsumerFactory<String,String> consumerFactory = new DefaultKafkaConsumerFactory<String, String>(consumerProps());
+//        KafkaMessageListenerContainer<String,String> kafkaMessageListenerContainer = new KafkaMessageListenerContainer<String, String>(consumerFactory,containerProperties);
+//        return kafkaMessageListenerContainer;
+//    }
     @Bean
     public KafkaTemplate<String, String> createTemplate() {
         Map<String, Object> senderProps = senderProps();
-        ProducerFactory<String, String> pf =
-                new DefaultKafkaProducerFactory<String, String>(senderProps);
-        KafkaTemplate<String, String> template = new KafkaTemplate<>(pf);
+        KafkaTemplate<String, String> template = new KafkaTemplate<String,String>(producerFactory());
         return template;
     }
 
@@ -70,6 +68,7 @@ public class KafkaConfig {
         props.put(ProducerConfig.RETRIES_CONFIG, 0);
         props.put(ProducerConfig.BATCH_SIZE_CONFIG, 16384);
         props.put(ProducerConfig.LINGER_MS_CONFIG, 1);
+        props.put(ProducerConfig.RETRIES_CONFIG,1);
         props.put(ProducerConfig.BUFFER_MEMORY_CONFIG, 33554432);
         props.put(ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
         props.put(ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG, StringSerializer.class);
@@ -98,33 +97,36 @@ public class KafkaConfig {
     public AdminClient adminClient() {
         return AdminClient.create(admin().getConfig());
     }
+//    @Bean
+//    public NewTopic topic1() {
+//        return new NewTopic("foo", 2, (short) 2);
+//    }
+//
+//    @Bean
+//    public NewTopic topic2() {
+//        return new NewTopic("bar", 2, (short) 2);
+//    }
     @Bean
     public NewTopic topic1() {
-        return new NewTopic("foo", 2, (short) 2);
+        return new NewTopic("01343", 2, (short) 2);
     }
+//    @Bean
+//    public ApplicationRunner runner(ReplyingKafkaTemplate<String, String, String> template) {
+//        return args -> {
+//            ProducerRecord<String, String> record = new ProducerRecord<>("kRequests", "foo");
+//            RequestReplyFuture<String, String, String> replyFuture = template.sendAndReceive(record);
+//            SendResult<String, String> sendResult = replyFuture.getSendFuture().get();
+//            System.out.println("Sent ok: " + sendResult.getRecordMetadata());
+//            ConsumerRecord<String, String> consumerRecord = replyFuture.get();
+//            System.out.println("Return value: " + consumerRecord.value());
+//        };
+//    }
 
-    @Bean
-    public NewTopic topic2() {
-        return new NewTopic("bar", 2, (short) 2);
-    }
-
-    @Bean
-    public ApplicationRunner runner(ReplyingKafkaTemplate<String, String, String> template) {
-        return args -> {
-            ProducerRecord<String, String> record = new ProducerRecord<>("kRequests", "foo");
-            RequestReplyFuture<String, String, String> replyFuture = template.sendAndReceive(record);
-            SendResult<String, String> sendResult = replyFuture.getSendFuture().get();
-            System.out.println("Sent ok: " + sendResult.getRecordMetadata());
-            ConsumerRecord<String, String> consumerRecord = replyFuture.get();
-            System.out.println("Return value: " + consumerRecord.value());
-        };
-    }
-
-    @Bean
-    public ReplyingKafkaTemplate<String, String, String> replyingTemplate(
-            ProducerFactory<String, String> pf, ConcurrentMessageListenerContainer<String, String> repliesContainer) {
-        return new ReplyingKafkaTemplate<String,String,String>(pf, repliesContainer);
-    }
+//    @Bean
+//    public ReplyingKafkaTemplate<String, String, String> replyingTemplate(
+//            ProducerFactory<String, String> pf, ConcurrentMessageListenerContainer<String, String> repliesContainer) {
+//        return new ReplyingKafkaTemplate<String,String,String>(pf, repliesContainer);
+//    }
     @Bean
     public ConcurrentMessageListenerContainer<String, String> repliesContainer(
             ConcurrentKafkaListenerContainerFactory<String, String> containerFactory) {
@@ -137,13 +139,13 @@ public class KafkaConfig {
     }
     //配置事务用
     @Bean
-    public ProducerFactory<Integer, String> producerFactory() {
+    public ProducerFactory<String, String> producerFactory() {
         DefaultKafkaProducerFactory factory = new DefaultKafkaProducerFactory<>(senderProps());
         factory.transactionCapable();
         factory.setTransactionIdPrefix("tran-");
         return factory;
     }
-
+   //配置事务用 KafkaTemplate和 TransactionManager用一个ProducerFactory就行
     @Bean
     public KafkaTransactionManager transactionManager(ProducerFactory producerFactory) {
         KafkaTransactionManager manager = new KafkaTransactionManager(producerFactory);

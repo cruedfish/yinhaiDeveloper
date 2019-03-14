@@ -2,6 +2,7 @@ package com.rabbitmq.queuedevploper;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.RequestMapping;
 
 import javax.xml.ws.RequestWrapper;
@@ -23,7 +24,9 @@ public class SendController {
     }
 
     @RequestMapping(value = "/test/send3")
+    @Transactional
     public void testSend3(){
         kafkaProducer.send();
+        throw new RuntimeException("事务回滚");
     }
 }

@@ -26,9 +26,10 @@ public class KafkaProducer {
     public  KafkaTemplate<String,String> kafkaTemplate;
 
     public  void send(){
-        ProducerRecord<String,String> producerRecord = new ProducerRecord("foo",0,"test1","test1",null);
-        ProducerRecord<String,String> producerRecord2 = new ProducerRecord("foo",0,"test2","test2",null);
-        ProducerRecord<String,String> producerRecord3 = new ProducerRecord("foo",0,"test3","test3",null);
+        //发送到两个不同的分区  ，kafka会根据键值来计算不同的hash值进行hash分片  路由到特定的partition上
+        ProducerRecord<String,String> producerRecord = new ProducerRecord("01343",0,"test1","test1",null);
+        ProducerRecord<String,String> producerRecord2 = new ProducerRecord("01343",1,"test2","test2",null);
+        ProducerRecord<String,String> producerRecord3 = new ProducerRecord("01343",1,"test3","test3",null);
         kafkaTemplate.send(producerRecord).addCallback(new ListenableFutureCallback() {
             @Override
             public void onFailure(Throwable ex) {
@@ -37,7 +38,7 @@ public class KafkaProducer {
 
             @Override
             public void onSuccess(Object result) {
-              System.out.println("发送成功");
+              System.out.println(result);
             }
         });
         kafkaTemplate.send(producerRecord2).addCallback(new ListenableFutureCallback() {
@@ -48,7 +49,7 @@ public class KafkaProducer {
 
             @Override
             public void onSuccess(Object result) {
-                System.out.println("发送成功");
+                System.out.println(result);
             }
         });
         kafkaTemplate.send(producerRecord3).addCallback(new ListenableFutureCallback<SendResult<String, String>>() {
