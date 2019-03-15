@@ -27,6 +27,11 @@ public class SendController {
     @Transactional
     public void testSend3(){
         kafkaProducer.send();
-        throw new RuntimeException("事务回滚");
+    }
+
+    @RequestMapping(value = "/test/send4")
+    @Transactional
+    public void testSend4(){
+        kafkaProducer.send();
     }
 }

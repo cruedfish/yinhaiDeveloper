@@ -15,9 +15,11 @@ import org.apache.kafka.common.serialization.StringSerializer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
+import org.springframework.kafka.config.KafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
 import org.springframework.kafka.listener.ConcurrentMessageListenerContainer;
 import org.springframework.kafka.listener.ContainerProperties;
@@ -28,6 +30,7 @@ import org.springframework.kafka.requestreply.RequestReplyFuture;
 import org.springframework.kafka.support.SendResult;
 import org.springframework.kafka.transaction.KafkaTransactionManager;
 import org.springframework.util.StringUtils;
+import org.springframework.util.concurrent.ListenableFuture;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -55,12 +58,12 @@ public class KafkaConfig {
 //        KafkaMessageListenerContainer<String,String> kafkaMessageListenerContainer = new KafkaMessageListenerContainer<String, String>(consumerFactory,containerProperties);
 //        return kafkaMessageListenerContainer;
 //    }
-    @Bean
-    public KafkaTemplate<String, String> createTemplate() {
-        Map<String, Object> senderProps = senderProps();
-        KafkaTemplate<String, String> template = new KafkaTemplate<String,String>(producerFactory());
-        return template;
-    }
+//    @Bean
+//    public KafkaTemplate<String, String> createTemplate() {
+//        Map<String, Object> senderProps = senderProps();
+//        KafkaTemplate<String, String> template = new KafkaTemplate<String,String>(producerFactory());
+//        return template;
+//    }
 
     private Map<String, Object> senderProps() {
         Map<String, Object> props = new HashMap<>();
@@ -93,6 +96,17 @@ public class KafkaConfig {
                 StringUtils.arrayToCommaDelimitedString(new String[]{"39.107.90.7:9092","39.107.90.7:9093"}));
         return new KafkaAdmin(configs);
     }
+
+//    @Bean
+//    public KafkaListenerContainerFactory<?> batchFactory() {
+//        ConcurrentKafkaListenerContainerFactory<String, String> factory =
+//                new ConcurrentKafkaListenerContainerFactory<>();
+//        ConsumerFactory<String,String> consumerFactory = new DefaultKafkaConsumerFactory<String, String>(consumerProps());
+//        factory.setConsumerFactory(consumerFactory);
+//        factory.setBatchListener(true);
+//        return factory;
+//    }
+
     @Bean
     public AdminClient adminClient() {
         return AdminClient.create(admin().getConfig());
@@ -122,21 +136,66 @@ public class KafkaConfig {
 //        };
 //    }
 
-//    @Bean
-//    public ReplyingKafkaTemplate<String, String, String> replyingTemplate(
-//            ProducerFactory<String, String> pf, ConcurrentMessageListenerContainer<String, String> repliesContainer) {
-//        return new ReplyingKafkaTemplate<String,String,String>(pf, repliesContainer);
-//    }
+
+
+
+
+
+
+
+    @Bean(name = "replyingTemplate")
+    public ReplyingKafkaTemplate<String, String, String> replyingTemplate() {
+        ContainerProperties containerProperties = new ContainerProperties();
+        return new ReplyingKafkaTemplate<String, String, String>(producerFactory(),new ConcurrentMessageListenerContainer<>(new DefaultKafkaConsumerFactory<String,String>(consumerProps()),));
+    }
     @Bean
     public ConcurrentMessageListenerContainer<String, String> repliesContainer(
             ConcurrentKafkaListenerContainerFactory<String, String> containerFactory) {
-
+//        containerFactory.setBatchListener(true);
         ConcurrentMessageListenerContainer<String, String> repliesContainer =
                 containerFactory.createContainer("replies");
         repliesContainer.getContainerProperties().setGroupId("repliesGroup");
         repliesContainer.setAutoStartup(false);
         return repliesContainer;
     }
+    //批量消费需要在factory 中设置batchListener 为true
+    @Bean(name = "containerFactory")
+    @ConditionalOnBean(name = "replyingTemplate")
+    public ConcurrentKafkaListenerContainerFactory containerFactory(ReplyingKafkaTemplate<String,String,String> replyingKafkaTemplate){
+        ConcurrentKafkaListenerContainerFactory concurrentKafkaListenerContainerFactory = new ConcurrentKafkaListenerContainerFactory();
+        concurrentKafkaListenerContainerFactory.setBatchListener(true);
+        concurrentKafkaListenerContainerFactory.setConsumerFactory(new DefaultKafkaConsumerFactory(consumerProps()));
+        concurrentKafkaListenerContainerFactory.setReplyTemplate(replyingKafkaTemplate);
+        return concurrentKafkaListenerContainerFactory;
+    }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    @Bean
+    public NewTopic topic3() {
+        return new NewTopic("topic-kafkaTest2", 2, (short) 2);
+    }
+
+    @Bean
+    public NewTopic topic4(){
+        return new NewTopic("topic-kafkaTest1", 2, (short) 2);
+    }
+
+
     //配置事务用
     @Bean
     public ProducerFactory<String, String> producerFactory() {
