@@ -136,52 +136,28 @@ public class KafkaConfig {
 //        };
 //    }
 
-
-
-
-
-
-
-
-    @Bean(name = "replyingTemplate")
-    public ReplyingKafkaTemplate<String, String, String> replyingTemplate() {
-        ContainerProperties containerProperties = new ContainerProperties();
-        return new ReplyingKafkaTemplate<String, String, String>(producerFactory(),new ConcurrentMessageListenerContainer<>(new DefaultKafkaConsumerFactory<String,String>(consumerProps()),));
-    }
     @Bean
-    public ConcurrentMessageListenerContainer<String, String> repliesContainer(
-            ConcurrentKafkaListenerContainerFactory<String, String> containerFactory) {
-//        containerFactory.setBatchListener(true);
+    public ReplyingKafkaTemplate<String, String, String> replyingTemplate(
+           ProducerFactory producerFactory ) {
+        ConcurrentKafkaListenerContainerFactory<String, String> containerFactory =  new ConcurrentKafkaListenerContainerFactory<>();
+        containerFactory.setConsumerFactory(new DefaultKafkaConsumerFactory<String,String >(consumerProps()));
         ConcurrentMessageListenerContainer<String, String> repliesContainer =
                 containerFactory.createContainer("replies");
         repliesContainer.getContainerProperties().setGroupId("repliesGroup");
         repliesContainer.setAutoStartup(false);
-        return repliesContainer;
+        return new ReplyingKafkaTemplate<String,String,String>(producerFactory, repliesContainer);
     }
+
     //批量消费需要在factory 中设置batchListener 为true
     @Bean(name = "containerFactory")
     @ConditionalOnBean(name = "replyingTemplate")
-    public ConcurrentKafkaListenerContainerFactory containerFactory(ReplyingKafkaTemplate<String,String,String> replyingKafkaTemplate){
+    public ConcurrentKafkaListenerContainerFactory containerFactory(ReplyingKafkaTemplate<String,String,String>  replyingKafkaTemplate){
         ConcurrentKafkaListenerContainerFactory concurrentKafkaListenerContainerFactory = new ConcurrentKafkaListenerContainerFactory();
         concurrentKafkaListenerContainerFactory.setBatchListener(true);
         concurrentKafkaListenerContainerFactory.setConsumerFactory(new DefaultKafkaConsumerFactory(consumerProps()));
         concurrentKafkaListenerContainerFactory.setReplyTemplate(replyingKafkaTemplate);
         return concurrentKafkaListenerContainerFactory;
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 
 
@@ -195,19 +171,21 @@ public class KafkaConfig {
         return new NewTopic("topic-kafkaTest1", 2, (short) 2);
     }
 
+//
+//    //配置事务用
+//    @Bean
+//    public ProducerFactory<String, String> producerFactory() {
+//        DefaultKafkaProducerFactory factory = new DefaultKafkaProducerFactory<>(senderProps());
+//        factory.transactionCapable();
+//        factory.setTransactionIdPrefix("tran-");
+//        return factory;
+//    }
 
-    //配置事务用
-    @Bean
-    public ProducerFactory<String, String> producerFactory() {
-        DefaultKafkaProducerFactory factory = new DefaultKafkaProducerFactory<>(senderProps());
-        factory.transactionCapable();
-        factory.setTransactionIdPrefix("tran-");
-        return factory;
-    }
-   //配置事务用 KafkaTemplate和 TransactionManager用一个ProducerFactory就行
-    @Bean
-    public KafkaTransactionManager transactionManager(ProducerFactory producerFactory) {
-        KafkaTransactionManager manager = new KafkaTransactionManager(producerFactory);
-        return manager;
-    }
+    //好像事务和@SendTo不能共存
+//   //配置事务用 KafkaTemplate和 TransactionManager用一个ProducerFactory就行
+//    @Bean
+//    public KafkaTransactionManager transactionManager(ProducerFactory producerFactory) {
+//        KafkaTransactionManager manager = new KafkaTransactionManager(producerFactory);
+//        return manager;
+//    }
 }

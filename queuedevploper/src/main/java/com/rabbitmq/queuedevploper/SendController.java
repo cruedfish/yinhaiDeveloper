@@ -25,13 +25,13 @@ public class SendController {
 
     @RequestMapping(value = "/test/send3")
     @Transactional
-    public void testSend3(){
+    public void testSend3() throws Exception{
         kafkaProducer.send();
     }
 
     @RequestMapping(value = "/test/send4")
     @Transactional
-    public void testSend4(){
+    public void testSend4()throws Exception{
         kafkaProducer.send();
     }
 }
