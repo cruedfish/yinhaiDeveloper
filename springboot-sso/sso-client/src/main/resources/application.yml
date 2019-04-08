@@ -1,0 +1,11 @@
+spring:
+  application:
+    name: ssoclient
+
+server:
+  port: 8080
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: ${eureka.serviceUrl:http://127.0.0.1:7001/eureka/}
